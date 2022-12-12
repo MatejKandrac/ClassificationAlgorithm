@@ -4,7 +4,7 @@ import java.util.*;
 
 public class ClassificationAlgorithm {
 
-    public static final short K = 5;
+    public static final short K = 7;
     public static final short POINTS_IN_SQUARE = 20;
     public static final short MESH_SEPARATIONS = 10000 / POINTS_IN_SQUARE;
     public static final int NUM_OF_GENERATED_POINTS = 40000;
@@ -13,19 +13,47 @@ public class ClassificationAlgorithm {
     public static final byte BLUE = 0b10;
     public static final byte PURPLE = 0b11;
 
+    public static final Point[] INITIAL_POINTS = {
+            new Point(-4500, -4400, RED),
+            new Point(-4100, -3000, RED),
+            new Point(-1800, -2400, RED),
+            new Point(-2500, -3400, RED),
+            new Point(-2000, -1400, RED),
 
-    ArrayList<Point>[][] mesh = new ArrayList[MESH_SEPARATIONS][MESH_SEPARATIONS];
+            new Point(4500, -4400, GREEN),
+            new Point(4100, -3000, GREEN),
+            new Point(1800, -2400, GREEN),
+            new Point(2500, -3400, GREEN),
+            new Point(2000, -1400, GREEN),
+
+            new Point(-4500, 4400, BLUE),
+            new Point(-4100, 3000, BLUE),
+            new Point(-1800, 2400, BLUE),
+            new Point(-2500, 3400, BLUE),
+            new Point(-2000, 1400, BLUE),
+
+            new Point(4500, 4400, PURPLE),
+            new Point(4100, 3000, PURPLE),
+            new Point(1800, 2400, PURPLE),
+            new Point(2500, 3400, PURPLE),
+            new Point(2000, 1400, PURPLE),
+    };
+    public static final int[][] POINT_RANGES = {
+            {5000, 5000},
+            {500, 5000},
+            {5000, 500},
+            {500, 500}
+    };
+
+    final ArrayList<Point>[][] mesh = new ArrayList[MESH_SEPARATIONS][MESH_SEPARATIONS];
+    final Set<String> generatedPoints = new HashSet<>();
 
     public byte[][] getPicture() {
-        initPoints();
+        for (Point point : INITIAL_POINTS)
+            addToMesh(point, getRelativeX(point.getX()), getRelativeY(point.getY()));
+
         Random rn = new Random();
 
-        int[][] ranges = {
-                {5000, 5000},
-                {500, 5000},
-                {5000, 500},
-                {500, 500}
-        };
         int rangeIndex = 0;
         double correctClassifications = 0;
 
@@ -33,14 +61,19 @@ public class ClassificationAlgorithm {
             short x;
             short y;
             if (rn.nextInt(100) == 0){
-                x = (short) (rn.nextInt(10000) - 5000);
-                y = (short) (rn.nextInt(10000) - 5000);
-            } else {
-                int[] range = ranges[rangeIndex];
-                x = (short) (rn.nextInt(5500) - range[0]);
-                y = (short) (rn.nextInt(5500) - range[1]);
-            }
+                do {
+                    x = (short) (rn.nextInt(10000) - 5000);
+                    y = (short) (rn.nextInt(10000) - 5000);
+                } while (generatedPoints.contains(x+" "+y));
 
+            } else {
+                do {
+                    int[] range = POINT_RANGES[rangeIndex];
+                    x = (short) (rn.nextInt(5500) - range[0]);
+                    y = (short) (rn.nextInt(5500) - range[1]);
+                } while (generatedPoints.contains(x+" "+y));
+            }
+            generatedPoints.add(x+" "+y);
             byte color = classify(x, y, true);
             if (color == rangeIndex) correctClassifications++;
             rangeIndex = ++rangeIndex % 4;
@@ -62,62 +95,20 @@ public class ClassificationAlgorithm {
                         for (Point point : points) {
                             classCount[point.getClassification()]++;
                         }
-                        int mostCount = 0;
-                        int mostIndex = -1;
 
-                        for (int j = 0; j < classCount.length; j++) {
-                            if (classCount[j] > mostCount) {
-                                mostCount = classCount[j];
-                                mostIndex = j;
-                            }
-                        }
-                        colors[i][i1] = (byte) mostIndex;
+                        byte mostUsedClass = getMostUsedClass(classCount);
+
+                        colors[i][i1] = mostUsedClass;
                     }
                 } else {
-                    colors[i][i1] = classify((short) (i*POINTS_IN_SQUARE - 5000 + POINTS_IN_SQUARE / 2), (short) (i1*POINTS_IN_SQUARE - 5000 + POINTS_IN_SQUARE / 2), false);
+                    colors[i][i1] = classify(
+                            (short) (i*POINTS_IN_SQUARE - 5000 + POINTS_IN_SQUARE / 2),
+                            (short) (i1*POINTS_IN_SQUARE - 5000 + POINTS_IN_SQUARE / 2),
+                            false);
                 }
             }
         }
         return colors;
-    }
-
-    void initPoints() {
-        Point[] points = {
-                new Point(-4500, -4400, RED),
-                new Point(-4100, -3000, RED),
-                new Point(-1800, -2400, RED),
-                new Point(-2500, -3400, RED),
-                new Point(-2000, -1400, RED),
-
-                new Point(4500, -4400, GREEN),
-                new Point(4100, -3000, GREEN),
-                new Point(1800, -2400, GREEN),
-                new Point(2500, -3400, GREEN),
-                new Point(2000, -1400, GREEN),
-
-                new Point(-4500, 4400, BLUE),
-                new Point(-4100, 3000, BLUE),
-                new Point(-1800, 2400, BLUE),
-                new Point(-2500, 3400, BLUE),
-                new Point(-2000, 1400, BLUE),
-
-                new Point(4500, 4400, PURPLE),
-                new Point(4100, 3000, PURPLE),
-                new Point(1800, 2400, PURPLE),
-                new Point(2500, 3400, PURPLE),
-                new Point(2000, 1400, PURPLE),
-        };
-
-        for (Point point : points) {
-            addToMesh(point, getRelativeX(point.getX()), getRelativeY(point.getY()));
-        }
-    }
-
-    void addToMesh(Point point, short relX, short relY) {
-        if (mesh[relX][relY] == null) {
-            mesh[relX][relY] = new ArrayList<>();
-        }
-        mesh[relX][relY].add(point);
     }
 
     byte classify(short x, short y, boolean addToMesh) {
@@ -145,17 +136,14 @@ public class ClassificationAlgorithm {
                     startX = 0;
                     leftOut = true;
                 } else leftOut = false;
-
                 if (endX >= MESH_SEPARATIONS) {
                     endX = MESH_SEPARATIONS - 1;
                     rightOut = true;
                 } else rightOut = false;
-
                 if (startY < 0) {
                     startY = 0;
                     topOut = true;
                 } else topOut = false;
-
                 if (endY >= MESH_SEPARATIONS) {
                     endY = MESH_SEPARATIONS - 1;
                     downOut = true;
@@ -210,21 +198,34 @@ public class ClassificationAlgorithm {
             classCount[aClass]++;
         }
 
-        int mostCount = 0;
-        int mostIndex = -1;
+        byte mostUsedClass = getMostUsedClass(classCount);
 
-        for (int i = 0; i < classCount.length; i++) {
-            if (classCount[i] > mostCount) {
-                mostCount = classCount[i];
-                mostIndex = i;
-            }
-        }
-
-        newPoint.setClassification((byte) mostIndex);
+        newPoint.setClassification(mostUsedClass);
         if (addToMesh)
             addToMesh(newPoint, relX, relY);
 
-        return (byte) mostIndex;
+        return mostUsedClass;
+    }
+
+    byte getMostUsedClass(int[] classesCount) {
+
+        int mostCount = 0;
+        byte mostIndex = -1;
+
+        for (byte i = 0; i < classesCount.length; i++) {
+            if (classesCount[i] > mostCount) {
+                mostCount = classesCount[i];
+                mostIndex = i;
+            }
+        }
+        return mostIndex;
+    }
+
+    void addToMesh(Point point, short relX, short relY) {
+        if (mesh[relX][relY] == null) {
+            mesh[relX][relY] = new ArrayList<>();
+        }
+        mesh[relX][relY].add(point);
     }
 
     double getDistance(Point one, Point two) {
